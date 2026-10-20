@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Manager | Chow Mission</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="mode-banner hidden no-print" id="mode-banner"></div>
+  <header class="site-header no-print">
+    <div class="nav">
+      <span class="logo">Chow Mission<small>MANAGER</small></span>
+      <div class="admin-actions hidden" id="admin-actions">
+        <label class="sound"><input type="checkbox" id="sound" checked> Sound alert</label>
+        <button class="btn small outline" id="logout" type="button">Log out</button>
+      </div>
+    </div>
+  </header>
+  <div class="checker no-print" aria-hidden="true"></div>
+
+  <main class="admin-wrap">
+    <p id="loading">Loading...</p>
+
+    <section class="card login-card hidden" id="login-view">
+      <h2>Manager login</h2>
+      <p class="muted" id="demo-hint"></p>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="form-error" id="login-error" role="alert"></p>
+        <button class="btn" type="submit">Log in</button>
+      </form>
+    </section>
+
+    <section class="hidden" id="dash-view">
+      <p class="form-error" id="dash-error" role="alert"></p>
+      <div class="stats no-print" id="stats"></div>
+      <div class="chips no-print" id="tabs"></div>
+      <div class="chips no-print" id="filters"></div>
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <script src="firebase-config.js"></script>
+  <script src="db.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

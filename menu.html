@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu | Chow Mission by Choprice</title>
+  <meta name="description" content="Full Chow Mission menu: smash burgers, wings, stews, tacos, fries, braai plates and combos.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a class="active" href="menu.html" aria-current="page">Menu</a></li>
+        <li><a href="order.html">Delivery &amp; Collect</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a class="cart-pill" href="order.html">Order <span data-cart-count>0</span></a></li>
+      </ul>
+    </nav>
+  </header>
+  <div class="checker" aria-hidden="true"></div>
+
+  <main>
+    <section class="section">
+      <div class="wrap">
+        <h1 style="font-size:clamp(2.2rem,6vw,3.6rem)">Our menu</h1>
+        <p class="lead">Tap <strong>Add</strong> on anything you want, then head to the order page.</p>
+        <div class="menu-grid" id="menu-root" style="margin-top:28px"></div>
+        <p class="menu-note">Prices in rand (R). Mains come with a carb and a side qoh. Ask the kitchen about today's availability.</p>
+        <p style="margin-top:24px"><a class="btn" href="order.html">Go to my order (<span data-cart-count>0</span>)</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="wrap">
+      <div><strong>Chow Mission by Choprice</strong><br>12 Main Road, Mellville</div>
+      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a></div>
+      <div><a href="https://www.instagram.com/chow_miss1on" target="_blank" rel="noopener">@chow_miss1on</a></div>
+      <small>©️ <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
+    </div>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>

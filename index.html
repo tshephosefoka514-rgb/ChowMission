@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chow Mission by Choprice | Burgers, Wings & Comfort Food in Mellville</title>
+  <meta name="description" content="Smash burgers, wings, stews and braai plates in Mellville. Order delivery or collect.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a class="active" href="index.html" aria-current="page">Home</a></li>
+        <li><a href="menu.html">Menu</a></li>
+        <li><a href="order.html">Delivery &amp; Collect</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a class="cart-pill" href="order.html">Order <span data-cart-count>0</span></a></li>
+      </ul>
+    </nav>
+  </header>
+  <div class="checker" aria-hidden="true"></div>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div>
+          <h1>Big flavour.<br>Real chow.</h1>
+          <p>Smash burgers, crispy wings, proper comfort food and braai plates, made fresh in Mellville. Get it delivered or come collect.</p>
+          <a class="btn" href="order.html">Order now</a>
+          <a class="btn outline" href="menu.html">See the menu</a>
+        </div>
+        <div class="hero-badge" aria-hidden="true">
+          <div><strong>Chow<br>Mission</strong><span>BY CHOPRICE</span></div>
+        </div>
+      </div>
+    </section>
+    <div class="checker" aria-hidden="true"></div>
+
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Pick how you want it</h2>
+        <div class="grid cols-3" style="margin-top:24px">
+          <article class="card red">
+            <h3>Delivery</h3>
+            <p>Hot food to your door. Add your address at checkout and we'll bring it.</p>
+            <p style="margin-top:16px"><a class="btn" style="background:#fff;color:#c8261e" href="order.html">Order delivery</a></p>
+          </article>
+          <article class="card">
+            <h3>Takeaway / Collect</h3>
+            <p>Order ahead and collect at 12 Main Road, Mellville. No delivery fee.</p>
+            <p style="margin-top:16px"><a class="btn" href="order.html">Order to collect</a></p>
+          </article>
+          <article class="card">
+            <h3>Pre-order</h3>
+            <p>Planning ahead? Pick a date and time up to 14 days away for delivery or collection.</p>
+            <p><strong data-preorder-left></strong></p>
+            <p style="margin-top:16px"><a class="btn" href="order.html?preorder=1">Pre-order now</a></p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="background:var(--white)">
+      <div class="wrap">
+        <h2>Crowd favourites</h2>
+        <p class="lead">Tap add and finish on the order page.</p>
+        <div class="grid cols-3" id="featured" style="margin-top:24px"></div>
+        <p style="margin-top:28px"><a class="btn outline" href="menu.html">Full menu →</a></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap grid cols-2">
+        <div>
+          <h2>How it works</h2>
+          <ol class="steps" style="margin-top:20px">
+            <li><strong>Build your order</strong><br>Add items from the menu.</li>
+            <li><strong>Choose delivery or collect</strong><br>Order now or pre-order for a later date.</li>
+            <li><strong>Send it</strong><br>The kitchen sees your order straight away and calls if anything needs confirming.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Find us</h3>
+          <p>12 Main Road, Mellville</p>
+          <p><a href="tel:+27783121534">+27 78 312 1534</a></p>
+          <p style="margin-top:16px"><a class="btn small" href="contact.html">Map &amp; contact</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="wrap">
+      <div><strong>Chow Mission by Choprice</strong><br>12 Main Road, Mellville</div>
+      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a></div>
+      <div><a href="https://www.instagram.com/chow_miss1on" target="_blank" rel="noopener">@chow_miss1on</a></div>
+      <small>©️ <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
+    </div>
+  </footer>
+  <script src="firebase-config.js"></script>
+  <script src="db.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

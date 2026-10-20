@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delivery &amp; Collection | Chow Mission by Choprice</title>
+  <meta name="description" content="Order Chow Mission for delivery or collection in Mellville.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="menu.html">Menu</a></li>
+        <li><a class="active" href="order.html" aria-current="page">Delivery &amp; Collect</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a class="cart-pill" href="order.html">Order <span data-cart-count>0</span></a></li>
+      </ul>
+    </nav>
+  </header>
+  <div class="checker" aria-hidden="true"></div>
+
+  <main>
+    <section class="section" id="order-root">
+      <div class="wrap">
+        <h1 style="font-size:clamp(2.2rem,6vw,3.6rem)">Your order</h1>
+        <p class="lead">Choose delivery or collection, fill in your details and send it to the kitchen.</p>
+
+        <p class="menu-note hidden" data-demo-note>Test mode: orders are saved in this browser only, so the manager page will show them only on this device. See README.txt to connect the shared database.</p>
+
+        <div class="card hidden" id="confirmation" style="margin-top:28px" role="status">
+          <h2>Order received</h2>
+          <p>Your order number is <strong id="conf-number"></strong>.</p>
+          <p id="conf-text"></p>
+          <p class="menu-note hidden" id="conf-demo">Test mode: this order was saved in this browser only.</p>
+          <p style="margin-top:16px">
+            <a class="btn" href="index.html">Back to home</a>
+            <button class="btn outline" id="order-again" type="button">Order again</button>
+          </p>
+        </div>
+
+        <div class="order-layout" id="order-layout" style="margin-top:28px">
+          <form id="order-form" class="card" novalidate>
+            <div class="toggle" role="radiogroup" aria-label="Order type">
+              <input type="radio" name="mode" id="m-del" value="Delivery" checked>
+              <label for="m-del">Delivery</label>
+              <input type="radio" name="mode" id="m-col" value="Collection">
+              <label for="m-col">Collect</label>
+            </div>
+
+            <div class="field" data-field="name">
+              <label for="name">Your name</label>
+              <input id="name" name="name" autocomplete="name" required>
+              <span class="error">Please enter your name.</span>
+            </div>
+            <div class="field" data-field="phone">
+              <label for="phone">Phone number</label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="e.g. 078 312 1534" required>
+              <span class="error">Enter a valid South African number.</span>
+            </div>
+
+            <div id="address-block">
+              <div class="field" data-field="address">
+                <label for="address">Delivery address</label>
+                <input id="address" name="address" autocomplete="street-address" placeholder="Street number and name">
+                <span class="error">Please enter your delivery address.</span>
+              </div>
+              <div class="field">
+                <label for="suburb">Suburb</label>
+                <input id="suburb" name="suburb" placeholder="e.g. Melville, Auckland Park">
+              </div>
+            </div>
+            <p class="menu-note hidden" id="collect-note">Collect at <strong>12 Main Road, Mellville</strong>.</p>
+
+            <div class="field">
+              <label for="when" id="time-label">Delivery time</label>
+              <select id="when" name="when">
+                <option value="asap">As soon as possible</option>
+                <option value="preorder">Pre-order (pick a date and time)</option>
+              </select>
+            </div>
+            <div class="hidden" id="preorder-block">
+              <div class="field" data-field="date">
+                <label for="date">Pre-order date</label>
+                <input id="date" name="date" type="date">
+                <span class="error">Please choose a date within the next 14 days.</span>
+              </div>
+              <div class="field" data-field="time">
+                <label for="time">Pre-order time</label>
+                <input id="time" name="time" type="time">
+                <span class="error">Please choose a time.</span>
+              </div>
+              <p class="menu-note">The kitchen will call you to confirm pre-orders. <strong data-preorder-left></strong></p>
+            </div>
+
+            <div class="field">
+              <label for="payment">Payment (on delivery or collection)</label>
+              <select id="payment" name="payment">
+                <option>Cash</option>
+                <option>Card</option>
+                <option>EFT</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="notes">Notes (allergies, sauces, gate code…)</label>
+              <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+            <p class="form-error" id="order-error" role="alert"></p>
+            <button class="btn" id="place-order" type="submit">Place order</button>
+            <p class="form-note">No online payment. Pay the kitchen when your food arrives or when you collect it.</p>
+          </form>
+
+          <aside class="card summary" aria-label="Order summary">
+            <h3>Summary</h3>
+            <div id="cart-lines"></div>
+            <div class="totals" id="totals"></div>
+            <h3 style="font-size:1.1rem;margin-top:22px">Quick add</h3>
+            <div class="quick-add" id="quick-add">
+              <button type="button" class="chip" data-add="beef-burger">Beef Burger</button>
+              <button type="button" class="chip" data-add="lemon-pepper-wings">Lemon Pepper Wings</button>
+              <button type="button" class="chip" data-add="loaded-fries">Loaded Fries</button>
+              <button type="button" class="chip" data-add="smash-feast">Smash Feast</button>
+              <button type="button" class="chip" data-add="chow-for-2wo">Chow For 2wo</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="wrap">
+      <div><strong>Chow Mission by Choprice</strong><br>12 Main Road, Mellville</div>
+      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a></div>
+      <div><a href="https://www.instagram.com/chow_miss1on" target="_blank" rel="noopener">@chow_miss1on</a></div>
+      <small>©️ <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
+    </div>
+  </footer>
+  <script src="firebase-config.js"></script>
+  <script src="db.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
