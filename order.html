@@ -29,13 +29,30 @@
         <h1 style="font-size:clamp(2.2rem,6vw,3.6rem)">Your order</h1>
         <p class="lead">Choose delivery or collection, fill in your details and send it to the kitchen.</p>
 
-        <p class="menu-note hidden" data-demo-note>Test mode: orders are saved in this browser only, so the manager page will show them only on this device. See README.txt to connect the shared database.</p>
+        <div class="uber-box" data-uber-wrap>
+          <div>
+            <strong>Prefer Uber Eats?</strong><br>
+            Orders placed on Uber Eats are handled by Uber Eats, with their own prices, fees and tracking. Use the form below to order directly from us.
+          </div>
+          <a class="btn dark small" data-uber href="#">Open Uber Eats</a>
+        </div>
+
+        <p class="menu-note hidden" data-demo-note>Test mode: this page was opened straight from a folder, so orders are saved in this browser only and the manager will not see them. Start the server (see README.txt) and open http://localhost:8080 to send real orders.</p>
+
+        <div class="card hidden" id="pay-return" style="margin-top:28px" role="status">
+          <h2 id="pay-title">Checking your payment</h2>
+          <p id="pay-text"></p>
+          <p style="margin-top:16px">
+            <a class="btn" href="index.html">Back to home</a>
+            <a class="btn outline" href="order.html">Order again</a>
+          </p>
+        </div>
 
         <div class="card hidden" id="confirmation" style="margin-top:28px" role="status">
           <h2>Order received</h2>
           <p>Your order number is <strong id="conf-number"></strong>.</p>
           <p id="conf-text"></p>
-          <p class="menu-note hidden" id="conf-demo">Test mode: this order was saved in this browser only.</p>
+          <p class="menu-note hidden" id="conf-demo">Test mode: this order was saved in this browser only. The manager will not see it until you use the server (see README.txt).</p>
           <p style="margin-top:16px">
             <a class="btn" href="index.html">Back to home</a>
             <button class="btn outline" id="order-again" type="button">Order again</button>
@@ -97,11 +114,11 @@
             </div>
 
             <div class="field">
-              <label for="payment">Payment (on delivery or collection)</label>
+              <label for="payment">How will you pay?</label>
               <select id="payment" name="payment">
-                <option>Cash</option>
-                <option>Card</option>
-                <option>EFT</option>
+                <option value="Cash">Cash on delivery or collection</option>
+                <option value="Card">Card machine on delivery or collection</option>
+                <option value="EFT">EFT on delivery or collection</option>
               </select>
             </div>
             <div class="field">
@@ -111,7 +128,7 @@
             <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
             <p class="form-error" id="order-error" role="alert"></p>
             <button class="btn" id="place-order" type="submit">Place order</button>
-            <p class="form-note">No online payment. Pay the kitchen when your food arrives or when you collect it.</p>
+            <p class="form-note" id="pay-note">Pay the kitchen when your food arrives or when you collect it.</p>
           </form>
 
           <aside class="card summary" aria-label="Order summary">
@@ -136,12 +153,11 @@
     <div class="checker" aria-hidden="true"></div>
     <div class="wrap">
       <div><strong>Chow Mission by Choprice</strong><br>12 Main Road, Mellville</div>
-      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a></div>
+      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a> · <a data-uber href="#">Uber Eats</a></div>
       <div><a href="https://www.instagram.com/chow_miss1on" target="_blank" rel="noopener">@chow_miss1on</a></div>
       <small>©️ <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
     </div>
   </footer>
-  <script src="firebase-config.js"></script>
   <script src="db.js"></script>
   <script src="script.js"></script>
 </body>

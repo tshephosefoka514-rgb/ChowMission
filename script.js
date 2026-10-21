@@ -3,9 +3,15 @@
 const DELIVERY_FEE = 30;            // TODO: confirm real delivery fee with the kitchen
 const PREORDER_DAYS = 14;           // how far ahead customers can pre-order
 const PHONE_DISPLAY = "+27 78 312 1534";
+// Link to the Chow Mission store page on Uber Eats. Open the store in the Uber Eats app or
+// website, copy its link and paste it here. Set it to "" to hide every Uber Eats button.
+const UBER_EATS_URL = "https://www.ubereats.com";
 const CART_KEY = "chowMissionCart";
 
-/* ---------- Menu data (single source of truth) ---------- */
+/* ---------- Menu data (single source of truth) ----------
+   Server.java reads names and prices from this list, so keep every item in the
+   same shape as the ones below (n = name, p = price) and restart the server after
+   changing a price. */
 const MENU = [
   { id: "smash", title: "American Smash", blurb: "Big, juicy smash-style burgers with bold flavours and seriously good toppings.",
     items: [{ n: "Beef Burger", p: 90 }, { n: "Chicken Burger", p: 80 }] },
@@ -19,9 +25,9 @@ const MENU = [
   { id: "mains", title: "The Mains", blurb: "Proper comfort food, served with a carb and a side qoh.",
     items: [{ n: "Beef Stew", p: 89 }, { n: "Lamb Stew", p: 89 }, { n: "Chicken Curry", p: 89 }] },
   { id: "carbs", title: "The Carbs", blurb: "Pick your carb.",
-    items: [{ n: "Pap", p: 26 }, { n: "Rice", p: 26 }, { n: "Samp", p: 26 }] },
+    items: [{ n: "Pap", p: 25 }, { n: "Rice", p: 25 }, { n: "Samp", p: 25 }] },
   { id: "tacos", title: "Tacos", blurb: "Soft tortillas loaded with bold fillings.",
-    items: [{ n: "Beef Tacos", p: 55 }, { n: "Chicken Tacos", p: 5 }] },
+    items: [{ n: "Beef Tacos", p: 55 }, { n: "Chicken Tacos", p: 55 }] },
   { id: "sides", title: "Side Qoh", blurb: "Add a side to any meal.",
     items: [{ n: "Spinach", p: 15 }, { n: "Chakalaka", p: 15 }, { n: "Coleslaw", p: 15 },
             { n: "Butternut", p: 15 }, { n: "Fresh Green Salad", p: 35 }] },
@@ -83,8 +89,7 @@ function getDb(timeoutMs = 10000) {
   });
 }
 function friendlyError(err) {
-  if (err && err.code === "full") return "Sorry, pre-orders are full.";
-  if (err && err.code === "permission-denied") return "We could not accept that order. Please check your details and try again.";
+  if (err && ["full", "invalid", "rate"].includes(err.code)) return err.message;
   return "We could not send that right now. Please try again, or call us on " + PHONE_DISPLAY + ".";
 }
 
@@ -120,6 +125,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const open = links.classList.toggle("open"); btn.setAttribute("aria-expanded", open);
   });
   document.querySelectorAll("[data-year]").forEach(el => el.textContent = new Date().getFullYear());
+  document.querySelectorAll("[data-uber]").forEach(a => {
+    if (!UBER_EATS_URL) { (a.closest("[data-uber-wrap]") || a).classList.add("hidden"); return; }
+    a.href = UBER_EATS_URL; a.target = "_blank"; a.rel = "noopener";
+  });
   updateCartCount();
   renderMenuPage();
   renderFeatured();
@@ -176,6 +185,7 @@ function initOrderPage() {
   const placeBtn = document.getElementById("place-order");
   const errBox = document.getElementById("order-error");
   const mode = () => form.querySelector('input[name="mode"]:checked').value;
+  const orderLayout = document.getElementById("order-layout");
 
   function render() {
     const c = getCart(), ids = Object.keys(c).filter(id => ITEMS[id]);
@@ -255,9 +265,17 @@ function initOrderPage() {
     };
 
     placeBtn.disabled = true; placeBtn.textContent = "Sending...";
+    let leaving = false;
     try {
       const db = await getDb();
-      const ref = await db.placeOrder(order);
+      const res = await db.placeOrder(order);
+      if (res && res.pay) {       // online payment: hand over to the PayFast page, keep the cart until it is paid
+        leaving = true;
+        placeBtn.textContent = "Taking you to the payment page...";
+        goToPayFast(res.pay);
+        return;
+      }
+      const ref = typeof res === "string" ? res : res.ref;
       saveCart({});
       showConfirmation(ref, order, db.mode);
     } catch (err) {
@@ -265,12 +283,75 @@ function initOrderPage() {
       errBox.textContent = friendlyError(err);
       if (err && err.code === "full") refreshPreorder();
     } finally {
-      placeBtn.disabled = false; placeBtn.textContent = "Place order";
+      if (!leaving) { placeBtn.disabled = false; placeBtn.textContent = "Place order"; }
     }
   });
 
   document.getElementById("order-again").addEventListener("click", () => location.reload());
   render();
+  setupOnlinePayment(form);
+  handlePaymentReturn(errBox, orderLayout);
+}
+
+/* ---------- Online card payment (only offered when the server has PayFast switched on) ---------- */
+async function setupOnlinePayment(form) {
+  try {
+    const db = await getDb();
+    if (!db.getPaymentConfig) return;
+    const cfg = await db.getPaymentConfig();
+    if (!cfg || !cfg.online) return;
+    const sel = form.querySelector("#payment");
+    const opt = document.createElement("option");
+    opt.value = "Online"; opt.textContent = "Pay by card online now (secure)";
+    sel.prepend(opt); sel.value = "Online";
+    document.getElementById("pay-note").textContent = cfg.sandbox
+      ? "TEST SYSTEM: online payments are in test mode, so no real money is taken."
+      : "Card payments are handled on the secure PayFast page. We never see or store your card details.";
+  } catch (e) { /* no online payment: the other options still work */ }
+}
+
+function goToPayFast(pay) {
+  const f = document.createElement("form");
+  f.method = "POST"; f.action = pay.url;
+  Object.entries(pay.fields).forEach(([k, v]) => {
+    const i = document.createElement("input"); i.type = "hidden"; i.name = k; i.value = v; f.appendChild(i);
+  });
+  document.body.appendChild(f);
+  f.submit();
+}
+
+/** The customer lands back on order.html?paid=REF or ?cancelled=REF after the PayFast page. */
+async function handlePaymentReturn(errBox, orderLayout) {
+  const params = new URLSearchParams(location.search);
+  const paidRef = params.get("paid"), cancelledRef = params.get("cancelled");
+  if (cancelledRef) {
+    errBox.textContent = "Your payment was cancelled, so order " + cancelledRef + " was not sent to the kitchen. Your items are still here if you want to try again.";
+    return;
+  }
+  if (!paidRef) return;
+  const ref = paidRef.replace(/[^A-Za-z0-9-]/g, "").slice(0, 20);
+  orderLayout.classList.add("hidden");
+  const box = document.getElementById("pay-return");
+  const title = document.getElementById("pay-title"), text = document.getElementById("pay-text");
+  box.classList.remove("hidden");
+  title.textContent = "Checking your payment";
+  text.textContent = "Order " + ref + ". Please wait a moment while the payment is confirmed.";
+  const db = await getDb();
+  for (let i = 0; i < 20; i++) {
+    try {
+      const st = await db.getPaymentStatus(ref);
+      if (st && st.paid) {
+        saveCart({});
+        title.textContent = "Payment received";
+        text.textContent = "Thank you. Order " + ref + " is paid and has gone to the kitchen. They will call you if anything needs confirming.";
+        return;
+      }
+    } catch (e) { /* try again */ }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  title.textContent = "Waiting for confirmation";
+  text.textContent = "Order " + ref + " has not been confirmed yet. If you paid, it can take a few minutes. " +
+    "If it still does not show, call " + PHONE_DISPLAY + " and quote this order number.";
 }
 
 function showConfirmation(ref, o, mode) {
