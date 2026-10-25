@@ -10,7 +10,8 @@
 <body>
   <header class="site-header">
     <nav class="nav" aria-label="Main">
-      <a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
+     
+<a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
       <button class="menu-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
       <ul class="nav-links" id="nav-links">
         <li><a class="active" href="index.html" aria-current="page">Home</a></li>
@@ -27,13 +28,13 @@
     <section class="hero">
       <div class="wrap">
         <div>
-          <h1>Big flavour.<br>Real chow.</h1>
-          <p>Smash burgers, crispy wings, proper comfort food and braai plates, made fresh in Mellville. Get it delivered or come collect.</p>
-          <a class="btn" href="order.html">Order now</a>
-          <a class="btn outline" href="menu.html">See the menu</a>
+            <h1>Big flavour.<br>Real chow.</h1>
+            <p>Smash burgers, crispy wings, proper comfort food and braai plates, made fresh in Melville. Get it delivered or come collect.</p>
+            <a class="btn" href="order.html">Order now</a>
+            <a class="btn outline" href="menu.html">See the menu</a>
         </div>
-        <div class="hero-badge" aria-hidden="true">
-          <div><strong>Chow<br>Mission</strong><span>BY CHOPRICE</span></div>
+        <div class="hero-badge" aria-hidden="true" style="width: 240px; height: 240px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+          <img src="images/logo1.jpeg" alt="Chow Mission Logo" style="width: 90%; height: 90%; object-fit: cover;">
         </div>
       </div>
     </section>
@@ -44,12 +45,12 @@
         <h2 class="center">Pick how you want it</h2>
         <div class="grid cols-3" style="margin-top:24px">
           <article class="card red">
-                        <h3>Delivery</h3>
+            <h3>Delivery</h3>
             <p>Hot food to your door. Add your address at checkout and we'll bring it.</p>
             <p style="margin-top:16px"><a class="btn" style="background:#fff;color:#c8261e" href="order.html">Order delivery</a></p>
           </article>
           <article class="card">
-                        <h3>Takeaway / Collect</h3>
+            <h3>Takeaway / Collect</h3>
             <p>Order ahead and collect at 12 Main Road, Mellville. No delivery fee.</p>
             <p style="margin-top:16px"><a class="btn" href="order.html">Order to collect</a></p>
           </article>
@@ -108,6 +109,30 @@
       <small>©️ <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
     </div>
   </footer>
+
+  <!-- Cookie Consent Banner -->
+  <div id="cookie-banner" style="position: fixed; bottom: 0; left: 0; width: 100%; background: #222; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; font-family: sans-serif; box-sizing: border-box;">
+      <p style="margin: 0; font-size: 14px;">We use cookies to improve your ordering experience and analyze traffic. <a href="#" style="color: #ff4757; text-decoration: underline;">Privacy Policy</a></p>
+      <div>
+          <button onclick="acceptCookies()" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;">Accept</button>
+          <button onclick="declineCookies()" style="background: transparent; color: #ccc; border: 1px solid #555; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Decline</button>
+      </div>
+  </div>
+
+  <script>
+      function acceptCookies() {
+          localStorage.setItem('cookieConsent', 'accepted');
+          document.getElementById('cookie-banner').style.display = 'none';
+      }
+      function declineCookies() {
+          localStorage.setItem('cookieConsent', 'declined');
+          document.getElementById('cookie-banner').style.display = 'none';
+      }
+      if (localStorage.getItem('cookieConsent')) {
+          document.getElementById('cookie-banner').style.display = 'none';
+      }
+  </script>
+
   <script src="db.js"></script>
   <script src="script.js"></script>
 </body>
