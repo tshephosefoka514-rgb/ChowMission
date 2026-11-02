@@ -62,7 +62,9 @@ public class Server {
     static int preorderLimit = 40;
     static int ordersPerHour = 10;          // per customer device
     static boolean trustProxy = false;      // true when a hosting service sits in front of the server
+    static String adminUsername = "manager";
     static String adminPassword;
+    static final Map<String, String> managers = new LinkedHashMap<>();   // lower-case username -> password
     static boolean firstRun = false;
     static Path publicDir = Paths.get("public").toAbsolutePath().normalize();
     static Path dataDir = Paths.get("data").toAbsolutePath().normalize();
@@ -142,10 +144,11 @@ public class Server {
         for (String ip : lanAddresses()) System.out.println("  On your Wi-Fi (phone/tablet): http://" + ip + ":" + port);
         if (firstRun) {
             System.out.println();
-            System.out.println("  FIRST RUN. Your manager password is:  " + adminPassword);
+            System.out.println("  FIRST RUN. Manager login:  username  " + adminUsername + "   password  " + adminPassword);
             System.out.println("  It is saved in config.properties. Change it there if you like, then restart.");
         } else {
-            System.out.println("  Manager password: see config.properties (or the ADMIN_PASSWORD setting).");
+            System.out.println("  Manager login: username \"" + adminUsername + "\", password in config.properties (or the ADMIN_PASSWORD setting).");
+            if (managers.size() > 1) System.out.println("  " + managers.size() + " manager accounts are set up.");
         }
         if (onlineEnabled()) {
             System.out.println("  Online card payment: ON (" + (pfSandbox ? "PayFast TEST system, no real money" : "PayFast LIVE") + "). Site address: " + siteUrl);
@@ -179,13 +182,18 @@ public class Server {
         pfValidate = pv == null || !pv.equalsIgnoreCase("false");
         unpaidHoldMs = toInt(first(System.getenv("UNPAID_HOLD_MINUTES"), p.getProperty("unpaidHoldMinutes")), 30) * 60_000L;
 
+        String un = first(System.getenv("ADMIN_USERNAME"), p.getProperty("adminUsername"));
+        if (un != null) adminUsername = un;
         adminPassword = first(System.getenv("ADMIN_PASSWORD"), p.getProperty("adminPassword"));
         if (adminPassword == null) {
             adminPassword = randomPassword(10);
             firstRun = true;
             String text = "# Chow Mission settings. Restart the server after changing anything here.\n"
-                    + "# The manager logs in at /admin.html with this password.\n"
+                    + "# The manager logs in at /admin.html with this username and password.\n"
+                    + "adminUsername=" + adminUsername + "\n"
                     + "adminPassword=" + adminPassword + "\n"
+                    + "# More managers (each with their own login), written as name:password,name:password  (no commas in passwords)\n"
+                    + "# extraManagers=anele:password1,katlego:password2\n"
                     + "port=" + port + "\n"
                     + "preorderLimit=" + preorderLimit + "\n"
                     + "\n# Online card payments (PayFast). Remove the # and fill these in to switch it on. See README.txt.\n"
@@ -196,6 +204,16 @@ public class Server {
                     + "# payfastSandbox=true\n";
             try { Files.writeString(cfg, text, StandardCharsets.UTF_8); }
             catch (IOException e) { System.out.println("Could not save config.properties: " + e.getMessage()); }
+        }
+        managers.clear();
+        managers.put(adminUsername.trim().toLowerCase(), adminPassword);
+        String extra = first(System.getenv("EXTRA_MANAGERS"), p.getProperty("extraManagers"));
+        if (extra != null) {
+            for (String pair : extra.split(",")) {
+                int i = pair.indexOf(':');
+                if (i < 1 || i == pair.length() - 1) continue;
+                managers.put(pair.substring(0, i).trim().toLowerCase(), pair.substring(i + 1).trim());
+            }
         }
     }
 
@@ -530,12 +548,16 @@ public class Server {
         }
     }
 
-    static boolean passwordOk(String given) {
+    /** True when the username exists and the password matches. Takes the same time either way. */
+    static boolean loginOk(String username, String given) {
         try {
+            String expected = managers.get(username.trim().toLowerCase());
+            boolean known = expected != null;
+            if (!known) expected = "\u0000no-such-user";
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             byte[] a = sha.digest(given.getBytes(StandardCharsets.UTF_8));
-            byte[] b = sha.digest(adminPassword.getBytes(StandardCharsets.UTF_8));
-            return MessageDigest.isEqual(a, b);
+            byte[] b = sha.digest(expected.getBytes(StandardCharsets.UTF_8));
+            return MessageDigest.isEqual(a, b) && known;
         } catch (Exception e) {
             return false;
         }
@@ -763,7 +785,9 @@ public class Server {
             throw new ApiError(429, "rate", "Too many login attempts. Please wait 15 minutes.");
         }
         Map<String, String> f = parseForm(readBody(ex));
-        if (!passwordOk(f.getOrDefault("password", ""))) throw new ApiError(401, "auth", "Wrong password.");
+        String user = clean(f.getOrDefault("username", ""), 60);
+        if (!loginOk(user, f.getOrDefault("password", ""))) throw new ApiError(401, "auth", "Wrong username or password.");
+        System.out.println("Manager \"" + user.toLowerCase() + "\" logged in.");
         sendJson(ex, 200, "{\"token\":" + q(newSession()) + "}");
     }
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track your order | Chow Mission by Choprice</title>
+  <meta name="description" content="Check the status of your Chow Mission order.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="index.html">Chow Mission<small>BY CHOPRICE</small></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="menu.html">Menu</a></li>
+        <li><a href="order.html">Delivery &amp; Collect</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a class="cart-pill" href="order.html">Order <span data-cart-count>0</span></a></li>
+      </ul>
+    </nav>
+  </header>
+  <div class="checker" aria-hidden="true"></div>
+
+  <main>
+    <section class="section">
+      <div class="wrap">
+        <h1 style="font-size:clamp(2.2rem,6vw,3.6rem)">Track your order</h1>
+        <p class="lead">Enter your order number and the phone number you used when ordering.</p>
+
+        <form id="track-form" class="card" style="margin-top:24px;max-width:520px" novalidate>
+          <div class="field">
+            <label for="t-ref">Order number</label>
+            <input id="t-ref" name="ref" placeholder="e.g. CM-0012" autocapitalize="characters" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="t-phone">Phone number</label>
+            <input id="t-phone" name="phone" type="tel" autocomplete="tel" placeholder="e.g. 078 312 1534" required>
+          </div>
+          <p class="form-error" id="track-error" role="alert"></p>
+          <button class="btn" type="submit">Check my order</button>
+        </form>
+
+        <div class="card hidden" id="track-result" style="margin-top:24px;max-width:720px" role="status" aria-live="polite">
+          <h2 id="track-title"></h2>
+          <p id="track-text"></p>
+          <ol class="track-steps" id="track-steps"></ol>
+          <p class="muted" id="track-updated"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="wrap">
+      <div><strong>Chow Mission by Choprice</strong><br>12 Main Road, Mellville</div>
+      <div><a href="menu.html">Menu</a> · <a href="order.html">Order</a> · <a href="contact.html">Contact</a> · <a href="track.html">Track order</a> · <a data-uber href="#">Uber Eats</a></div>
+      <div><a href="https://www.instagram.com/chow_miss1on" target="_blank" rel="noopener">@chow_miss1on</a></div>
+      <small>© <span data-year></span> Chow Mission. Kitchen curated &amp; managed by @jobes_kitchen.</small>
+    </div>
+  </footer>
+  <script src="db.js"></script>
+  <script src="script.js"></script>
+  <script src="track.js"></script>
+</body>
+</html>
