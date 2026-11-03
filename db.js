@@ -34,6 +34,12 @@
         return ref;
       },
       async getPreorderTaken() { return read(K.pre, 0); },
+      async trackOrder(ref, phone) {
+        const tail = s => String(s).replace(/\D/g, "").slice(-9);
+        const o = read(K.orders, []).find(x => x.ref === String(ref).toUpperCase() && tail(x.phone) === tail(phone) && tail(phone).length === 9);
+        if (!o) throw codeError("notfound", "We could not find that order. Check the order number and the phone number you used.");
+        return o;
+      },
       async getPaymentConfig() { return { online: false }; },     // no online payment in test mode
       async getPaymentStatus() { return { paid: false }; },
       async markPaid(ref) {
@@ -122,6 +128,9 @@
         });
         return d.pay ? d : d.ref;     // with online payment the server also sends what to post to PayFast
       },
+      async trackOrder(ref, phone) {
+        return call("/api/track?ref=" + encodeURIComponent(ref) + "&phone=" + encodeURIComponent(phone));
+      },
       async getPaymentConfig() { return call("/api/payment-config"); },
       async getPaymentStatus(ref) { return call("/api/payment-status?ref=" + encodeURIComponent(ref)); },
       async markPaid(ref) {
@@ -137,8 +146,8 @@
         await call("/api/messages", { method: "POST", body: { name: m.name, contact: m.contact, message: m.message } });
       },
 
-      async login(email, pw) {
-        const d = await call("/api/admin/login", { method: "POST", body: { password: pw } });
+      async login(username, pw) {
+        const d = await call("/api/admin/login", { method: "POST", body: { username, password: pw } });
         setToken(d.token);
         authCbs.forEach(f => f({ email: "manager" }));
       },

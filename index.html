@@ -114,26 +114,14 @@
   <div id="cookie-banner" style="position: fixed; bottom: 0; left: 0; width: 100%; background: #222; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; font-family: sans-serif; box-sizing: border-box;">
       <p style="margin: 0; font-size: 14px;">We use cookies to improve your ordering experience and analyze traffic. <a href="#" style="color: #ff4757; text-decoration: underline;">Privacy Policy</a></p>
       <div>
-          <button onclick="acceptCookies()" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;">Accept</button>
-          <button onclick="declineCookies()" style="background: transparent; color: #ccc; border: 1px solid #555; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Decline</button>
+          <button id="cookie-accept" type="button" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;">Accept</button>
+          <button id="cookie-decline" type="button" style="background: transparent; color: #ccc; border: 1px solid #555; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Decline</button>
       </div>
   </div>
 
-  <script>
-      function acceptCookies() {
-          localStorage.setItem('cookieConsent', 'accepted');
-          document.getElementById('cookie-banner').style.display = 'none';
-      }
-      function declineCookies() {
-          localStorage.setItem('cookieConsent', 'declined');
-          document.getElementById('cookie-banner').style.display = 'none';
-      }
-      if (localStorage.getItem('cookieConsent')) {
-          document.getElementById('cookie-banner').style.display = 'none';
-      }
-  </script>
-
+  <script src="cookies.js"></script>
   <script src="db.js"></script>
   <script src="script.js"></script>
+  <script src="music.js"></script>
 </body>
 </html>

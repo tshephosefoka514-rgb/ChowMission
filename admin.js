@@ -19,11 +19,19 @@
     return el;
   }
 
-  const STATUS = { unpaid: "Awaiting payment", new: "New", preparing: "Preparing", ready: "Ready", completed: "Completed", cancelled: "Cancelled" };
-  const NEXT = { new: ["preparing", "Start preparing"], preparing: ["ready", "Mark ready"], ready: ["completed", "Mark completed"] };
+  const STATUS = { unpaid: "Awaiting payment", new: "New", preparing: "Preparing", ready: "Ready for collection", ontheway: "On its way", completed: "Completed", cancelled: "Cancelled" };
+  // The next button depends on the order type: delivery orders go "out for delivery", collections go "ready".
+  function nextFor(o) {
+    const delivery = o.type === "Delivery";
+    if (o.status === "new") return ["preparing", "Start preparing"];
+    if (o.status === "preparing") return delivery ? ["ontheway", "Order is on its way"] : ["ready", "Ready for collection"];
+    if (o.status === "ready") return delivery ? ["ontheway", "Order is on its way"] : ["completed", "Mark collected"];
+    if (o.status === "ontheway") return ["completed", "Mark delivered"];
+    return null;
+  }
   const FILTERS = [["active", "Active"], ["unpaid", "Awaiting payment"], ["preorders", "Pre-orders"], ["completed", "Completed"], ["cancelled", "Cancelled"], ["all", "All"]];
   const MATCH = {
-    active: o => ["new", "preparing", "ready"].includes(o.status),
+    active: o => ["new", "preparing", "ready", "ontheway"].includes(o.status),
     unpaid: o => o.status === "unpaid",
     preorders: o => o.when === "preorder" && o.status !== "cancelled",
     completed: o => o.status === "completed",
@@ -153,6 +161,21 @@
   /* ---------- drawing ---------- */
   const line = (label, value) => h("div", {}, h("strong", {}, label + ": "), value);
 
+  // What the customer sees for this order right now (the manager's buttons change it).
+  function customerSees(o) {
+    const delivery = o.type === "Delivery";
+    switch (o.status) {
+      case "unpaid": return "Waiting for your payment";
+      case "new": return "Your order has been received";
+      case "preparing": return "Your order is being prepared";
+      case "ready": return delivery ? "Your order is ready" : "Your order is ready for collection";
+      case "ontheway": return "Your order is on its way";
+      case "completed": return delivery ? "Your order was delivered" : "Your order was collected";
+      case "cancelled": return "Your order was cancelled";
+      default: return "";
+    }
+  }
+
   function payText(o) {
     if (o.payment === "Online") {
       if (o.payState === "paid") return "PAID online by card";
@@ -171,7 +194,8 @@
         try { await db.markPaid(o.ref); } catch (err) { showError(err); }
       } }, "Mark as paid"));
     }
-    if (NEXT[o.status]) actions.append(h("button", { class: "btn small", type: "button", onclick: () => setStatus(o, NEXT[o.status][0]) }, NEXT[o.status][1]));
+    const next = nextFor(o);
+    if (next) actions.append(h("button", { class: "btn small", type: "button", onclick: () => setStatus(o, next[0]) }, next[1]));
     if (o.status !== "completed" && o.status !== "cancelled") {
       actions.append(h("button", { class: "btn small ghost", type: "button", onclick: () => { if (confirm("Cancel order " + o.ref + "?")) setStatus(o, "cancelled"); } }, "Cancel order"));
     } else {
@@ -192,7 +216,8 @@
         h("div", {}, h("strong", {}, "Phone: "), h("a", { href: "tel:" + String(o.phone).replace(/[^\d+]/g, "") }, o.phone)),
         line(delivery ? "Deliver to" : "Collection", delivery ? [o.address, o.suburb].filter(Boolean).join(", ") : "Customer collects at the shop"),
         line("When", fmtWhen(o)),
-        line("Payment", payText(o))),
+        line("Payment", payText(o)),
+        line("Customer sees", customerSees(o))),
       h("ul", { class: "order-items" },
         (o.items || []).map(i => h("li", {}, h("span", {}, i.qty + " x " + i.name), h("span", {}, money(i.qty * i.price))))),
       h("div", { class: "order-total" },

@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
@@ -82,7 +83,7 @@ public class Server {
     static final SecureRandom RNG = new SecureRandom();
     static final int MAX_BODY = 50_000;
     // "unpaid" is set by the server only (online order waiting for its payment).
-    static final Set<String> STATUSES = Set.of("new", "preparing", "ready", "completed", "cancelled");
+    static final Set<String> STATUSES = Set.of("new", "preparing", "ready", "ontheway", "completed", "cancelled");
 
     /* ===================== data ===================== */
     static class MenuItem { String id, name; int price; }
@@ -115,6 +116,12 @@ public class Server {
 
     static final Map<String, Long> sessions = new ConcurrentHashMap<>();
     static final Map<String, Deque<Long>> hits = new ConcurrentHashMap<>();
+    static final Map<String, Deque<Long>> failedLogins = new ConcurrentHashMap<>();   // per manager username
+    static final Set<String> PUBLIC_TYPES = Set.of("html", "css", "js", "json", "txt", "svg", "png", "jpg", "jpeg", "webp", "ico", "woff2", "mp3", "m4a", "ogg");
+    // Tells the browser what the pages may load. Only this site, Google Fonts, the Google map and PayFast.
+    static final String CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            + "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src https://www.google.com; "
+            + "form-action 'self' https://www.payfast.co.za https://sandbox.payfast.co.za; base-uri 'self'; object-src 'none'; frame-ancestors 'none'";
 
     /* ===================== start up ===================== */
     public static void main(String[] args) throws Exception {
@@ -127,6 +134,11 @@ public class Server {
         loadMenu();
         loadStore();
 
+        // Drop slow or stuck connections so nobody can tie the server up.
+        System.setProperty("sun.net.httpserver.maxReqTime", "30");
+        System.setProperty("sun.net.httpserver.maxRspTime", "60");
+        System.setProperty("sun.net.httpserver.idleInterval", "30");
+        System.setProperty("sun.net.httpserver.maxIdleConnections", "200");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", Server::handle);
         server.setExecutor(Executors.newFixedThreadPool(8));
@@ -135,6 +147,11 @@ public class Server {
         var timer = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r); t.setDaemon(true); return t; });
         timer.scheduleAtFixedRate(() -> {
             try { synchronized (LOCK) { expireUnpaid(); } } catch (Throwable t) { t.printStackTrace(); }
+            long now = System.currentTimeMillis();           // forget old logins and counters so memory stays small
+            sessions.entrySet().removeIf(e -> e.getValue() < now);
+            for (Map<String, Deque<Long>> m : List.of(hits, failedLogins)) {
+                m.entrySet().removeIf(e -> { synchronized (e.getValue()) { Long last = e.getValue().peekLast(); return last == null || now - last > 3_600_000L; } });
+            }
         }, 1, 1, TimeUnit.MINUTES);
 
         System.out.println();
@@ -149,6 +166,9 @@ public class Server {
         } else {
             System.out.println("  Manager login: username \"" + adminUsername + "\", password in config.properties (or the ADMIN_PASSWORD setting).");
             if (managers.size() > 1) System.out.println("  " + managers.size() + " manager accounts are set up.");
+        }
+        for (Map.Entry<String, String> m : managers.entrySet()) {
+            if (m.getValue().length() < 8) System.out.println("  WARNING: the password for \"" + m.getKey() + "\" is shorter than 8 characters. Please use a longer one.");
         }
         if (onlineEnabled()) {
             System.out.println("  Online card payment: ON (" + (pfSandbox ? "PayFast TEST system, no real money" : "PayFast LIVE") + "). Site address: " + siteUrl);
@@ -204,6 +224,7 @@ public class Server {
                     + "# payfastSandbox=true\n";
             try { Files.writeString(cfg, text, StandardCharsets.UTF_8); }
             catch (IOException e) { System.out.println("Could not save config.properties: " + e.getMessage()); }
+            ownerOnly(cfg);
         }
         managers.clear();
         managers.put(adminUsername.trim().toLowerCase(), adminPassword);
@@ -224,6 +245,12 @@ public class Server {
     }
 
     static String nz(String s) { return s == null ? "" : s; }
+
+    /** Makes a file or folder readable by the owner only (Mac, Linux). Quietly does nothing on systems that cannot. */
+    static void ownerOnly(Path p) {
+        try { Files.setPosixFilePermissions(p, PosixFilePermissions.fromString(Files.isDirectory(p) ? "rwx------" : "rw-------")); }
+        catch (Exception ignored) { }
+    }
 
     static boolean onlineEnabled() {
         return !pfMerchantId.isEmpty() && !pfMerchantKey.isEmpty() && !pfPassphrase.isEmpty()
@@ -369,6 +396,7 @@ public class Server {
 
     static void loadStore() throws IOException {
         Files.createDirectories(dataDir);
+        ownerOnly(dataDir);
         storeFile = dataDir.resolve("store.txt");
         if (!Files.exists(storeFile)) return;
         int bad = 0;
@@ -587,7 +615,21 @@ public class Server {
     }
 
     /* ===================== request handling ===================== */
+    /** Safety headers on every reply. */
+    static void secure(HttpExchange ex) {
+        var h = ex.getResponseHeaders();
+        h.set("Content-Security-Policy", CSP);
+        h.set("X-Frame-Options", "DENY");
+        h.set("X-Content-Type-Options", "nosniff");
+        h.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        h.set("Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=()");
+        if (trustProxy && "https".equalsIgnoreCase(ex.getRequestHeaders().getFirst("X-Forwarded-Proto"))) {
+            h.set("Strict-Transport-Security", "max-age=31536000");   // browsers will only use https from now on
+        }
+    }
+
     static void handle(HttpExchange ex) {
+        secure(ex);
         try {
             String path = ex.getRequestURI().getPath();
             String method = ex.getRequestMethod();
@@ -629,6 +671,9 @@ public class Server {
 
     static void api(HttpExchange ex, String path, String method) throws Exception {
         boolean get = method.equals("GET"), post = method.equals("POST");
+        if (!path.equals("/api/payfast-notify") && rateLimited("api:" + clientIp(ex), 1200, 5 * 60_000L)) {
+            throw new ApiError(429, "rate", "Too many requests. Please wait a few minutes.");
+        }
         switch (path) {
             case "/api/preorder-status" -> {
                 need(get);
@@ -642,6 +687,7 @@ public class Server {
                 sendJson(ex, 200, "{\"online\":" + onlineEnabled() + ",\"sandbox\":" + pfSandbox + "}");
             }
             case "/api/payment-status" -> { need(get); paymentStatus(ex); }
+            case "/api/track" -> { need(get); trackOrder(ex); }
             case "/api/payfast-notify" -> { need(post); payfastNotify(ex); }
             case "/api/orders" -> { need(post); createOrder(ex); }
             case "/api/messages" -> { need(post); createMessage(ex); }
@@ -671,6 +717,19 @@ public class Server {
         Order o = buildOrder(f);
         synchronized (LOCK) {
             expireUnpaid();
+            String tail = phoneTail(o.phone);
+            int pendingForPhone = 0, preordersForPhone = 0;
+            for (Order x : orders) {
+                if (!phoneTail(x.phone).equals(tail)) continue;
+                if (x.status.equals("unpaid")) pendingForPhone++;
+                if (x.when.equals("preorder") && !x.status.equals("cancelled") && x.createdAtMs >= batchStartMs) preordersForPhone++;
+            }
+            if (o.payState.equals("pending") && pendingForPhone >= 2) {
+                throw new ApiError(429, "rate", "You already have card orders waiting for payment. Please pay for them, or wait 30 minutes, then try again.");
+            }
+            if (o.when.equals("preorder") && preordersForPhone >= 5) {
+                throw new ApiError(429, "rate", "That phone number already has several pre-orders. Please call us on +27 78 312 1534.");
+            }
             if (o.when.equals("preorder") && taken() >= preorderLimit) {
                 throw new ApiError(409, "full", "Sorry, pre-orders are full.");
             }
@@ -686,6 +745,11 @@ public class Server {
         } else {
             sendJson(ex, 201, "{\"ok\":true,\"ref\":" + q(o.ref) + "}");
         }
+    }
+
+    static String phoneTail(String phone) {
+        String d = phone == null ? "" : phone.replaceAll("\\D", "");
+        return d.length() > 9 ? d.substring(d.length() - 9) : d;
     }
 
     /** Checks everything the customer sent. Prices always come from the menu, never from the browser. */
@@ -786,7 +850,22 @@ public class Server {
         }
         Map<String, String> f = parseForm(readBody(ex));
         String user = clean(f.getOrDefault("username", ""), 60);
-        if (!loginOk(user, f.getOrDefault("password", ""))) throw new ApiError(401, "auth", "Wrong username or password.");
+        String key = user.toLowerCase();
+        if (rateLimited("login:all", 60, 15 * 60_000L)) {
+            throw new ApiError(429, "rate", "Too many login attempts. Please wait 15 minutes.");
+        }
+        Deque<Long> bad = failedLogins.computeIfAbsent(key, k -> new ArrayDeque<>());
+        synchronized (bad) {   // lock an account for 15 minutes after 10 wrong passwords, whoever is guessing
+            long now = System.currentTimeMillis();
+            while (!bad.isEmpty() && now - bad.peekFirst() > 15 * 60_000L) bad.pollFirst();
+            if (bad.size() >= 10) throw new ApiError(429, "rate", "Too many wrong passwords for this account. Please wait 15 minutes.");
+        }
+        if (!loginOk(user, f.getOrDefault("password", ""))) {
+            synchronized (bad) { bad.addLast(System.currentTimeMillis()); }
+            System.out.println("Failed manager login for \"" + key + "\" from " + clientIp(ex));
+            throw new ApiError(401, "auth", "Wrong username or password.");
+        }
+        synchronized (bad) { bad.clear(); }
         System.out.println("Manager \"" + user.toLowerCase() + "\" logged in.");
         sendJson(ex, 200, "{\"token\":" + q(newSession()) + "}");
     }
@@ -827,6 +906,7 @@ public class Server {
             Order found = null;
             for (Order o : orders) if (o.ref.equals(f.get("ref"))) { found = o; break; }
             if (found == null) throw new ApiError(404, "invalid", "Order not found.");
+            if (status.equals("ontheway") && !found.type.equals("Delivery")) throw bad("Only delivery orders can be set to 'on its way'.");
             if (found.payState.equals("pending") && !status.equals("cancelled")) {
                 throw bad("This order has not been paid online yet. Use 'Mark as paid' first, or cancel it.");
             }
@@ -964,6 +1044,35 @@ public class Server {
         sendJson(ex, 200, "{\"ok\":true}");
     }
 
+    /** Order tracking for customers. They must give the order number AND the phone number used on the order. */
+    static void trackOrder(HttpExchange ex) throws Exception {
+        if (rateLimited("track:" + clientIp(ex), 120, 15 * 60_000L)) {
+            throw new ApiError(429, "rate", "Too many checks. Please wait a few minutes or call us on +27 78 312 1534.");
+        }
+        String qs = ex.getRequestURI().getRawQuery();
+        Map<String, String> f = parseForm(qs == null ? "" : qs);
+        String ref = clean(f.getOrDefault("ref", ""), 20).toUpperCase();
+        String digits = f.getOrDefault("phone", "").replaceAll("\\D", "");
+        String json = null;
+        if (digits.length() >= 9) {
+            String tail = digits.substring(digits.length() - 9);
+            synchronized (LOCK) {
+                expireUnpaid();
+                for (Order o : orders) {
+                    String od = o.phone.replaceAll("\\D", "");
+                    if (o.ref.equals(ref) && od.length() >= 9 && od.substring(od.length() - 9).equals(tail)) {
+                        json = "{\"ref\":" + q(o.ref) + ",\"status\":" + q(o.status) + ",\"type\":" + q(o.type)
+                                + ",\"when\":" + q(o.when) + ",\"date\":" + q(o.date) + ",\"time\":" + q(o.time)
+                                + ",\"payment\":" + q(o.payment) + ",\"payState\":" + q(o.payState) + ",\"total\":" + o.total + "}";
+                        break;
+                    }
+                }
+            }
+        }
+        if (json == null) throw new ApiError(404, "notfound", "We could not find that order. Check the order number and the phone number you used.");
+        sendJson(ex, 200, json);
+    }
+
     /** Lets the customer's page ask whether its payment has been confirmed. Gives away nothing else. */
     static void paymentStatus(HttpExchange ex) throws IOException {
         String qs = ex.getRequestURI().getRawQuery();
@@ -1006,6 +1115,9 @@ public class Server {
         if (n.endsWith(".webp")) return "image/webp";
         if (n.endsWith(".ico")) return "image/x-icon";
         if (n.endsWith(".woff2")) return "font/woff2";
+        if (n.endsWith(".mp3")) return "audio/mpeg";
+        if (n.endsWith(".m4a")) return "audio/mp4";
+        if (n.endsWith(".ogg")) return "audio/ogg";
         return "application/octet-stream";
     }
 
@@ -1014,7 +1126,19 @@ public class Server {
         Path file;
         try {
             file = publicDir.resolve(path.substring(1)).normalize();
-        } catch (RuntimeException e) {
+            for (Path part : publicDir.relativize(file)) {           // never serve hidden files such as .git or .env
+                if (part.toString().startsWith(".")) { file = null; break; }
+            }
+            if (file != null) {                                      // and never follow a link out of the public folder
+                Path real = file.toRealPath();
+                if (!real.startsWith(publicDir.toRealPath())) file = null;
+            }
+            if (file != null) {
+                String n = file.getFileName().toString().toLowerCase();
+                int dot = n.lastIndexOf('.');
+                if (dot < 0 || !PUBLIC_TYPES.contains(n.substring(dot + 1))) file = null;
+            }
+        } catch (Exception e) {
             file = null;
         }
         if (file == null || !file.startsWith(publicDir) || !Files.isRegularFile(file)) {
@@ -1027,6 +1151,30 @@ public class Server {
         byte[] data = Files.readAllBytes(file);
         String name = file.getFileName().toString();
         ex.getResponseHeaders().set("Content-Type", mime(name));
+        ex.getResponseHeaders().set("Accept-Ranges", "bytes");
+        String range = ex.getRequestHeaders().getFirst("Range");     // Safari and iPhones need this to play audio
+        if (range != null && range.startsWith("bytes=") && data.length > 0 && !headOnly) {
+            Matcher rm = Pattern.compile("^bytes=(\\d*)-(\\d*)$").matcher(range.trim());
+            long start = 0, end = data.length - 1;
+            boolean ok = rm.matches() && !(rm.group(1).isEmpty() && rm.group(2).isEmpty());
+            if (ok) {
+                try {
+                    if (rm.group(1).isEmpty()) { start = Math.max(0, data.length - Long.parseLong(rm.group(2))); }
+                    else { start = Long.parseLong(rm.group(1)); if (!rm.group(2).isEmpty()) end = Math.min(end, Long.parseLong(rm.group(2))); }
+                } catch (NumberFormatException e) { ok = false; }
+            }
+            if (!ok || start > end || start >= data.length) {
+                ex.getResponseHeaders().set("Content-Range", "bytes */" + data.length);
+                ex.sendResponseHeaders(416, -1);
+                return;
+            }
+            ex.getResponseHeaders().set("Content-Range", "bytes " + start + "-" + end + "/" + data.length);
+            ex.getResponseHeaders().set("Cache-Control", "no-cache");
+            int len = (int) (end - start + 1);
+            ex.sendResponseHeaders(206, len);
+            ex.getResponseBody().write(data, (int) start, len);
+            return;
+        }
         ex.getResponseHeaders().set("Cache-Control", "no-cache");
         ex.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
         if (name.equals("admin.html")) ex.getResponseHeaders().set("X-Robots-Tag", "noindex, nofollow");
